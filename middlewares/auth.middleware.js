@@ -1,28 +1,30 @@
-import { ApiError } from "../utils/ApiError";
-import { asyncHandler } from "../utils/asyncHandler";
+import { ApiError } from "../utils/ApiError.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
 import jwt from "jsonwebtoken";
-import { User } from "../models/user.models"
+import { user as User } from "../models/user.models.js"; // Aliased to 'User' to avoid naming conflicts
 
-
-export const verifyJWT = asyncHandler(async(req, res, next) => {
+export const verifyJWT = asyncHandler(async (req, res, next) => {
     try {
-        const token = req.cookies?.accessToken || req.header("Authorization")?.replace("Bearer","")
+        // 1. Fixed 'req.cookies' (plural) 
+        // 2. Added a space after "Bearer " to perfectly isolate the token string
+        const token = req.cookies?.accessToken || req.header("Authorization")?.replace("Bearer ", "");
     
-        if (!token){
-            throw new ApiError(401,"Unauthorized request")
+        if (!token) {
+            throw new ApiError(401, "Unauthorized request");
         }
     
-        const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET)
+        const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
     
-        const user = await User.findById(decodedToken?._id).select("-password -refreshToken")
+        // Using the capitalized model variable 'User' here avoids variable shadowing
+        const foundUser = await User.findById(decodedToken?._id).select("-password -refreshToken");
     
-        if (!user) {
-            throw new ApiError(401,"Invalid Access Token")
+        if (!foundUser) {
+            throw new ApiError(401, "Invalid Access Token");
         }
     
-        req.user = user;
-        next()
+        req.user = foundUser;
+        next();
     } catch (error) {
-        throw new ApiError(401, error?.message || "Invalid access token")
+        throw new ApiError(401, error?.message || "Invalid access token");
     }
-})
+});
